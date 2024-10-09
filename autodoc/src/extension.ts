@@ -3,7 +3,7 @@ import axios from 'axios';  // Use axios to make HTTP requests
 
 export function activate(context: vscode.ExtensionContext) {
 
-  let disposable = vscode.commands.registerCommand('extension.generateDoc', async () => {
+  let disposable = vscode.commands.registerCommand('autodoc.generateDoc', async () => {
     const editor = vscode.window.activeTextEditor;
 
     if (editor) {
@@ -19,6 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
           });
           vscode.window.showInformationMessage('Documentation added!');
         } catch (error) {
+          console.error(error);
           vscode.window.showErrorMessage('Failed to generate documentation.');
         }
       } else {
@@ -31,7 +32,6 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 async function callGptApi(functionCode: string): Promise<string> {
-  // Axios call to OpenAI GPT API
   const response = await axios.post('https://api.openai.com/v1/completions', {
     model: 'text-davinci-003',
     prompt: `Generate JSDoc for the following function:\n\n${functionCode}`,
@@ -39,7 +39,7 @@ async function callGptApi(functionCode: string): Promise<string> {
     temperature: 0
   }, {
     headers: {
-      'Authorization': `Bearer YOUR_OPENAI_API_KEY`
+      'Authorization': `Bearer key`
     }
   });
 
