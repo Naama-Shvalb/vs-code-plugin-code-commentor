@@ -14127,7 +14127,9 @@ function activate(context) {
       const selectedFunction = document2.getText(selection);
       if (selectedFunction) {
         try {
-          const docString = await callGptApi(selectedFunction);
+          const apiKey = await getApiKey();
+          if (!apiKey) return;
+          const docString = await callGptApi(selectedFunction, apiKey);
           editor.edit((editBuilder) => {
             editBuilder.insert(selection.start, `/**
  * ${docString.trim()}
@@ -14146,7 +14148,25 @@ function activate(context) {
   });
   context.subscriptions.push(disposable);
 }
-async function callGptApi(functionCode) {
+async function getApiKey() {
+  const config = vscode.workspace.getConfiguration("autodoc");
+  let apiKey = config.get("apiKey");
+  if (!apiKey) {
+    apiKey = await vscode.window.showInputBox({
+      prompt: "Enter your OpenAI API key",
+      ignoreFocusOut: true,
+      password: true
+    });
+    if (apiKey) {
+      await config.update("apiKey", apiKey, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage("API key saved successfully!");
+    } else {
+      vscode.window.showErrorMessage("API key is required to generate documentation.");
+    }
+  }
+  return apiKey;
+}
+async function callGptApi(functionCode, apiKey) {
   const response = await axios_default.post("https://api.openai.com/v1/completions", {
     model: "text-davinci-003",
     prompt: `Generate JSDoc for the following function:
@@ -14156,7 +14176,7 @@ ${functionCode}`,
     temperature: 0
   }, {
     headers: {
-      "Authorization": `Bearer key`
+      "Authorization": `Bearer ${apiKey}`
     }
   });
   return response.data.choices[0].text;

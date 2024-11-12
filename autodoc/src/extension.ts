@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import axios from 'axios';  // Use axios to make HTTP requests
+import axios from 'axios';
 
 export function activate(context: vscode.ExtensionContext) {
 
@@ -13,7 +13,10 @@ export function activate(context: vscode.ExtensionContext) {
 
       if (selectedFunction) {
         try {
-          const docString = await callGptApi(selectedFunction);
+          const apiKey = await getApiKey();
+          if (!apiKey) return;
+
+          const docString = await callGptApi(selectedFunction, apiKey);
           editor.edit(editBuilder => {
             editBuilder.insert(selection.start, `/**\n * ${docString.trim()}\n */\n`);
           });
@@ -31,7 +34,29 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 }
 
-async function callGptApi(functionCode: string): Promise<string> {
+async function getApiKey(): Promise<string | undefined> {
+  const config = vscode.workspace.getConfiguration('autodoc');
+  let apiKey = config.get<string>('apiKey');
+
+  if (!apiKey) {
+    apiKey = await vscode.window.showInputBox({
+      prompt: 'Enter your OpenAI API key',
+      ignoreFocusOut: true,
+      password: true
+    });
+
+    if (apiKey) {
+      await config.update('apiKey', apiKey, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage('API key saved successfully!');
+    } else {
+      vscode.window.showErrorMessage('API key is required to generate documentation.');
+    }
+  }
+
+  return apiKey;
+}
+
+async function callGptApi(functionCode: string, apiKey: string): Promise<string> {
   const response = await axios.post('https://api.openai.com/v1/completions', {
     model: 'text-davinci-003',
     prompt: `Generate JSDoc for the following function:\n\n${functionCode}`,
@@ -39,7 +64,7 @@ async function callGptApi(functionCode: string): Promise<string> {
     temperature: 0
   }, {
     headers: {
-      'Authorization': `Bearer key`
+      'Authorization': `Bearer ${apiKey}`
     }
   });
 
