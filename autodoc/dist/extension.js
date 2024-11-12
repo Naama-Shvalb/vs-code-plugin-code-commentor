@@ -14131,9 +14131,7 @@ function activate(context) {
           if (!apiKey) return;
           const docString = await callGptApi(selectedFunction, apiKey);
           editor.edit((editBuilder) => {
-            editBuilder.insert(selection.start, `/**
- * ${docString.trim()}
- */
+            editBuilder.insert(selection.start, ` ${docString.trim()}
 `);
           });
           vscode.window.showInformationMessage("Documentation added!");
@@ -14167,19 +14165,25 @@ async function getApiKey() {
   return apiKey;
 }
 async function callGptApi(functionCode, apiKey) {
-  const response = await axios_default.post("https://api.openai.com/v1/completions", {
-    model: "text-davinci-003",
-    prompt: `Generate JSDoc for the following function:
+  const response = await axios_default.post("https://api.openai.com/v1/chat/completions", {
+    model: "gpt-4-turbo",
+    // השתמשנו ב-GPT-4 Turbo
+    messages: [
+      { role: "system", content: "You are an assistant that generates concise, language-specific documentation for code functions. Please only output the documentation comment without additional code or explanations." },
+      { role: "user", content: `Provide a concise documentation comment for the following function. Use "//" for languages like JavaScript, Java, C, etc. Use "#" for Python. Do not add extra comment symbols, and make sure the comment is only in the correct format for that language:
 
-${functionCode}`,
+${functionCode}` }
+    ],
     max_tokens: 100,
     temperature: 0
   }, {
     headers: {
-      "Authorization": `Bearer ${apiKey}`
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
     }
   });
-  return response.data.choices[0].text;
+  console.log(response.data.choices[0].message);
+  return response.data.choices[0].message.content.trim();
 }
 function deactivate() {
 }
